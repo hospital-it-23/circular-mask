@@ -1,0 +1,118 @@
+To create a circular mask that follows the camera in Unity, you can use a post-processing shader to mask the screen. Here's a step-by-step guide:
+
+### 1. **Create a Shader for the Circular Mask**
+Create a new shader (e.g., `CircleMask.shader`) with the following code:
+
+```glsl
+Shader "Custom/CircleMask"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _Radius ("Radius", Range(0, 1)) = 0.5
+    }
+    SubShader
+    {
+        Cull Off ZWrite Off ZTest Always
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            #include "UnityCG.cginc"
+
+            struct appdata
+            {
+                float4 vertex : POSITION;
+                float2 uv : TEXCOORD0;
+            };
+
+            struct v2f
+            {
+                float2 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+            };
+
+            v2f vert (appdata v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv = v.uv;
+                return o;
+            }
+
+            sampler2D _MainTex;
+            float _Radius;
+
+            fixed4 frag (v2f i) : SV_Target
+            {
+                // Aspect ratio correction
+                float2 aspect = float2(_ScreenParams.x / _ScreenParams.y, 1);
+                float2 uv = i.uv * aspect;
+                float2 center = float2(0.5 * aspect.x, 0.5);
+
+                float dist = distance(uv, center);
+                
+                if (dist > _Radius)
+                    return fixed4(0, 0, 0, 1); // Black outside the circle
+                else
+                    return tex2D(_MainTex, i.uv); // Original color inside
+            }
+            ENDCG
+        }
+    }
+}
+```
+
+### 2. **Create a Material**
+- Right-click in the Project window → **Create → Material**.
+- Name it `CircleMaskMat`.
+- Assign the `Custom/CircleMask` shader to this material.
+
+### 3. **Create a Script to Apply the Mask**
+Create a new C# script (e.g., `CircleMaskEffect.cs`):
+
+```csharp
+using UnityEngine;
+
+[ExecuteInEditMode]
+[RequireComponent(typeof(Camera))]
+public class CircleMaskEffect : MonoBehaviour
+{
+    public Material material;
+    [Range(0, 1)] public float radius = 0.5f;
+
+    void OnRenderImage(RenderTexture source, RenderTexture destination)
+    {
+        if (material != null)
+        {
+            material.SetFloat("_Radius", radius);
+            Graphics.Blit(source, destination, material);
+        }
+        else
+        {
+            Graphics.Blit(source, destination);
+        }
+    }
+}
+```
+
+### 4. **Set Up the Camera**
+- Attach the `CircleMaskEffect` script to your camera.
+- Drag the `CircleMaskMat` material into the `material` field in the script component.
+
+### 5. **Adjust the Radius**
+- In the Inspector, adjust the `radius` value (0 to 1) to control the size of the circular mask.
+
+### **How It Works**
+- The shader masks pixels outside the circular area by returning black, while pixels inside the circle show the scene.
+- The aspect ratio correction ensures the circle stays round on any screen resolution.
+- The script applies the effect to the camera’s output every frame.
+
+### **Notes**
+- **Camera Clear Flags**: Set the camera’s `Clear Flags` to "Solid Color" and choose a color (e.g., black) for the masked areas.
+- **Performance**: This is a lightweight screen-space effect and works efficiently.
+
+This setup will create a circular view that moves with the camera, masking everything outside the circle. Adjust the `radius` value dynamically in code for effects like a dynamic tunnel vision.
