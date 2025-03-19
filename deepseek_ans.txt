@@ -1,0 +1,110 @@
+Creating a new shader in Unity is straightforward. Here's how you can create the `CircleMask.shader` file and add the provided shader code:
+
+---
+
+### **Steps to Create a New Shader**
+
+1. **Open Unity Project**:
+   - Open your Unity project where you want to create the shader.
+
+2. **Create the Shader File**:
+   - In the **Project Window**, right-click in the desired folder (e.g., `Assets/Shaders`).
+   - Select **Create → Shader → Unlit Shader**.
+   - Name the shader file `CircleMask.shader`.
+
+3. **Edit the Shader Code**:
+   - Double-click the `CircleMask.shader` file to open it in your default code editor (e.g., Visual Studio).
+   - Replace the default code with the following shader code:
+
+```glsl
+Shader "Custom/CircleMask"
+{
+    Properties
+    {
+        _MainTex ("Texture", 2D) = "white" {}
+        _Radius ("Radius", Range(0, 1)) = 0.5
+    }
+    SubShader
+    {
+        Cull Off ZWrite Off ZTest Always
+
+        Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+
+            #include "UnityCG.cginc"
+
+            struct appdata
+            {
+                float4 vertex : POSITION;
+                float2 uv : TEXCOORD0;
+            };
+
+            struct v2f
+            {
+                float2 uv : TEXCOORD0;
+                float4 vertex : SV_POSITION;
+            };
+
+            v2f vert (appdata v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv = v.uv;
+                return o;
+            }
+
+            sampler2D _MainTex;
+            float _Radius;
+
+            fixed4 frag (v2f i) : SV_Target
+            {
+                // Aspect ratio correction
+                float2 aspect = float2(_ScreenParams.x / _ScreenParams.y, 1);
+                float2 uv = i.uv * aspect;
+                float2 center = float2(0.5 * aspect.x, 0.5);
+
+                float dist = distance(uv, center);
+                
+                if (dist > _Radius)
+                    return fixed4(0, 0, 0, 1); // Black outside the circle
+                else
+                    return tex2D(_MainTex, i.uv); // Original color inside
+            }
+            ENDCG
+        }
+    }
+}
+```
+
+4. **Save the Shader**:
+   - Save the file in your code editor.
+
+5. **Compile the Shader**:
+   - Unity will automatically compile the shader when you save it. If there are no errors, the shader is ready to use.
+
+---
+
+### **Using the Shader**
+
+1. **Create a Material**:
+   - Right-click in the Project window → **Create → Material**.
+   - Name the material `CircleMaskMat`.
+   - Assign the `Custom/CircleMask` shader to the material.
+
+2. **Apply the Material to the Camera**:
+   - Attach the `CircleMaskEffect` script (from the previous steps) to your camera.
+   - Drag the `CircleMaskMat` material into the `material` field of the script.
+
+3. **Adjust the Radius**:
+   - In the Inspector, adjust the `radius` value (0 to 1) to control the size of the circular mask.
+
+---
+
+### **Troubleshooting**
+- If the shader doesn't appear in the material dropdown, ensure the shader file is saved and compiled correctly.
+- If you see errors in the Unity Console, double-check the shader code for typos or syntax issues.
+
+This shader will create a circular mask effect that follows the camera, as described in your original request. Let me know if you need further assistance!
